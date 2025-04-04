@@ -358,6 +358,7 @@ local function getBringPosition()
 end
 
 local spinSpeed = 10 -- Adjust this number to change rotation speed (higher = faster)
+local shakeIntensity = 0.5 -- Intensity of the shaking effect
 
 local function makeCharacterInvisible(character)
     if not character then return end
@@ -384,15 +385,46 @@ local function bringPlayer(player)
             makeCharacterInvisible(player.Character)
         end
         
-        -- Apply spinning effect while maintaining position
+        -- Calculate shaking offset
+        local shakeOffset = Vector3.new(
+            (math.random() * 2 - 1) * shakeIntensity,
+            (math.random() * 2 - 1) * shakeIntensity,
+            (math.random() * 2 - 1) * shakeIntensity
+        )
+        
+        -- Apply spinning effect with shaking while maintaining position
         local spinCFrame = bringPosition * CFrame.Angles(0, math.rad(os.clock() * 360 * spinSpeed), 0)
-        humanoidRootPart.CFrame = spinCFrame
+        humanoidRootPart.CFrame = spinCFrame + shakeOffset
         
         -- Freeze their physics to prevent drifting
         humanoidRootPart.Velocity = Vector3.new(0, 0, 0)
         humanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
     end
 end
+
+-- Function to handle character added events
+local function onCharacterAdded(player, character)
+    if bringing and originalPositions[player] then
+        -- Wait for the character to fully load
+        character:WaitForChild("HumanoidRootPart")
+        -- Make the new character invisible
+        makeCharacterInvisible(character)
+    end
+end
+
+-- Connect character added events for all players
+for _, player in ipairs(Players:GetPlayers()) do
+    player.CharacterAdded:Connect(function(character)
+        onCharacterAdded(player, character)
+    end)
+end
+
+-- Also connect for future players
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        onCharacterAdded(player, character)
+    end)
+end)
 
 local function loopBring()
     if bringing then return end
